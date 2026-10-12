@@ -2,7 +2,7 @@
 
 AI로 만든 이미지 여러 장에서 쓸 만한 한 장을 고르고(Pick), 편집해(Edit), 원하는 형식으로 내보내며(Export), 최종 1장에 든 AI 비용까지 알려 주는 웹앱입니다.
 
-- 배포 주소: (Vercel 배포 후 적기)
+- 배포 주소: https://keepers-for-pixels.vercel.app  소스 저장소: https://github.com/S13ee/keepers-for-pixels
 - 이전 프로젝트: [Keepers for AI](https://keepers-for-ai.vercel.app) — 중간 점검 1차 버전, 그대로 보존
 
 ## 흐름
