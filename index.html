@@ -604,12 +604,30 @@
   .aipanel.off::before{animation-play-state:paused}
   .aipanel.off .aiseg,.aipanel.off .aichecks,.aipanel.off .aikey,.aipanel.off .airun{pointer-events:none}
   .aipanel.off .ainote{display:none}
+  .armeta{display:block;margin-top:4px;color:rgba(255,255,255,.45);font-size:11.5px}
+  /* 수정 14: 첫 화면 About 단추, '이미지만 편집하기' 입구 */
+  .ti{width:auto;height:auto;padding:6px 13px;border-radius:999px;font-size:12.5px;letter-spacing:.08em;line-height:1}
+  .tbox{width:min(340px,80vw);padding:14px 16px;font-size:14px;line-height:1.7;background:rgba(10,15,24,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-color:rgba(243,241,236,.6);text-shadow:none}
+  .editonly{display:block;margin:16px auto 0;padding:4px 2px;font:500 13px/1.4 'Pretendard','Noto Sans KR',sans-serif;letter-spacing:.02em;color:rgba(243,241,236,.78);background:none;border:0;text-decoration:underline;text-underline-offset:4px;text-decoration-color:rgba(243,241,236,.45);cursor:pointer;animation:rise 1s ease-out 1.1s both;transition:color .2s}
+  .editonly:hover,.editonly:focus-visible{color:#fff;text-decoration-color:#fff;outline:none}
+  @media (prefers-reduced-motion:reduce){ .editonly{animation:none} }
+  /* 수정 15: About을 설명 문장 옆 노란 글자로, 로고로도 홈 이동 */
+  .brand .kdef .tinfo{vertical-align:baseline;margin-left:10px}
+  .brand .kdef .tin{font-size:inherit;line-height:inherit}
+  .ti,.ti:hover,.ti:focus-visible,.ti[aria-expanded=true]{border:0;background:none;mix-blend-mode:normal;padding:0;width:auto;height:auto;color:#f5d061;font:700 13.5px/1.4 'Pretendard','Noto Sans KR',sans-serif;letter-spacing:.06em;cursor:help}
+  .ti:hover,.ti:focus-visible,.ti[aria-expanded=true]{color:#ffe28a;text-decoration:underline;text-underline-offset:4px;outline:none}
+  .kdef .tbox{left:50%;bottom:calc(100% + 12px);transform:translate(-50%,4px);text-align:left}
+  .kdef .tinfo:hover .tbox,.kdef .ti:focus-visible+.tbox,.kdef .ti[aria-expanded=true]+.tbox{transform:translate(-50%,0)}
+  .appname[role=link]{cursor:pointer;transition:opacity .2s}
+  .appname[role=link]:hover,.appname[role=link]:focus-visible{opacity:.75;outline:none}
+  .brand .kdef{position:relative;z-index:4}
+  .kdef .tbox{top:calc(100% + 12px);bottom:auto;transform:translate(-50%,-4px);background:rgba(10,15,24,.86)}
 </style>
 </head>
 <body>
 <div class="appbg" aria-hidden="true"></div><div class="appshade" aria-hidden="true"></div>
 <header class="topbar" id="top" hidden>
-  <span class="appname">KEEPERS<span class="ap2"> for Pixels</span></span>
+  <span class="appname" id="appName" role="link" tabindex="0" title="첫 화면으로" aria-label="첫 화면으로">KEEPERS<span class="ap2"> for Pixels</span></span>
   <button class="hb" id="logo" type="button" aria-label="첫 화면으로" title="첫 화면으로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11.5h13V9"/><path d="M10 20.5v-6h4v6"/></svg></button>
   <nav class="nav" aria-label="단계"><button class="navb" type="button" data-go="upload">Upload</button><button class="navb" type="button" data-go="pick">Pick</button><button class="navb" type="button" data-go="edit">Edit</button><button class="navb" type="button" data-go="report">Export</button></nav>
 </header>
@@ -620,9 +638,10 @@
   <div class="hero-bg" role="img" aria-label="새벽 선착장에서 건져 온 사진들을 손질하는 어부의 뒷모습"></div>
   <div class="hero-shade"></div>
   <div class="brand">
-    <h1><span class="tt">KEEPERS for Pixels</span><span class="tinfo"><span class="tin"><button class="ti" type="button" id="tiBtn" aria-label="이 앱 설명" aria-describedby="tiBox" aria-expanded="false">i</button><span class="tbox" role="tooltip" id="tiBox">AI 이미지가 자주 틀리는 곳(여섯 개 손가락, 짝짝이 눈, 깨진 글자, 녹아 붙은 사물)을 찾아내는 판독기입니다. 판독 결과를 보고 쓸 만한 한 장을 고른 뒤 편집해 내보내고, 그 한 장에 든 AI 비용과 다음에 덜 틀리게 만드는 프롬프트 요청문까지 알려 드립니다.</span></span></span></h1>
-    <p class="kdef">Keeper : 사진가들이 여러 컷 가운데 쓸 만한 한 컷을 건졌을 때 부르는 말</p>
+    <h1><span class="tt">KEEPERS for Pixels</span></h1>
+    <p class="kdef">Keeper : 사진가들이 여러 컷 가운데 쓸 만한 한 컷을 건졌을 때 부르는 말<span class="tinfo"><span class="tin"><button class="ti" type="button" id="tiBtn" aria-label="이 앱 소개 (About)" aria-describedby="tiBox" aria-expanded="false">About</button><span class="tbox" role="tooltip" id="tiBox">AI 이미지가 자주 틀리는 곳(여섯 개 손가락, 짝짝이 눈, 깨진 글자, 녹아 붙은 사물)을 찾아내는 판독기입니다. 판독 결과를 보고 쓸 만한 한 장을 고른 뒤 편집해 내보내고, 그 한 장에 든 AI 비용과 다음에 덜 틀리게 만드는 프롬프트 요청문까지 알려 드립니다.</span></span></span></p>
     <button class="go" type="button" id="start" aria-label="시작하기">GO</button>
+    <button class="editonly" type="button" id="editOnly">이미지만 편집하기</button>
   </div>
 </main>
 
@@ -730,7 +749,7 @@
     </div>
   </div>
   <div class="ftabs ftabs2" id="pkFilter2" aria-label="결정별 보기"></div>
-  <p class="issuenote" id="issueNote" hidden><b>Issues</b>는 자동 점검에서 아래 중 하나라도 걸린 이미지입니다.<br><b>해상도 낮음</b> 짧은 변이 480px보다 작아 크게 쓰면 흐려 보임 · <b>흐림</b> 윤곽이 흐릿함 · <b>너무 어두움·밝음</b> 전체 밝기가 지나치게 낮거나 높음 · <b>비슷함</b> 거의 같은 그림이 또 있음<br>AI 판독을 했다면 <b>손·얼굴 이상</b>, <b>글자 오류</b>, <b>주제와 다름</b>도 여기에 모입니다.<br>버려야 한다는 뜻은 아닙니다. 의도한 것이면 Keep 하세요.</p>
+  <p class="issuenote" id="issueNote" hidden><b>Issues</b>는 자동 점검에서 아래 중 하나라도 걸린 이미지입니다.<br><b>해상도 낮음</b> 짧은 변이 480px보다 작아 크게 쓰면 흐려 보임 · <b>흐림</b> 윤곽이 흐릿함 · <b>너무 어두움·밝음</b> 전체 밝기가 지나치게 낮거나 높음 · <b>비슷함</b> 거의 같은 그림이 또 있음<br>AI 판독을 했다면 <b>손가락·손</b>, <b>얼굴·눈</b>, <b>몸·팔다리</b>, <b>글자</b>, <b>사물·배경</b>, <b>주제</b>에서 결함이 의심되는 이미지도 여기에 모입니다.<br>버려야 한다는 뜻은 아닙니다. 의도한 것이면 Keep 하세요.</p>
   <p class="q" id="cmpHint" hidden>비교할 이미지 두 장을 누르세요.</p>
   <div class="pgrid" id="pgrid"></div>
   <div class="msgbox" id="pickMsg" role="alert" hidden></div>
@@ -907,11 +926,16 @@ window.addEventListener('hashchange',()=>{ const v=location.hash.slice(1); const
 $$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
 const navState=()=>$$('[data-go]').forEach(b=>b.setAttribute('aria-disabled',String(!!gate(b.dataset.go))));
 $('#logo').onclick=()=>go('home');
-$('#v-home').onclick=()=>go('upload');
-$('#start').onclick=e=>{ e.stopPropagation(); go('upload'); };
+$('#appName').onclick=()=>go('home'); $('#appName').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go('home'); } });
+/* 입구 두 개: GO = AI 판독 포함, '이미지만 편집하기' = 판독 패널 없이 올리기·편집만 */
+const startMode=m=>{ B.mode=m; go('upload'); if(view==='upload') renderUpload(); };
+$('#v-home').onclick=()=>startMode('scan');
+$('#start').onclick=e=>{ e.stopPropagation(); startMode('scan'); };
+$('#editOnly').onclick=e=>{ e.stopPropagation(); startMode('edit'); };
 $('#tiBtn').onclick=e=>{ e.stopPropagation(); const b=$('#tiBtn'); b.setAttribute('aria-expanded',String(b.getAttribute('aria-expanded')!=='true')); };
 $('.tinfo').addEventListener('click',e=>e.stopPropagation());
-const placeTip=()=>{ const t=$('#tiBox'); t.style.left=''; const r=t.getBoundingClientRect(), W=document.documentElement.clientWidth; if(r.right>W-12){ t.style.left=`calc(100% + 2px - ${Math.ceil(r.right-(W-12))}px)`; } };
+/* About 설명 상자는 About 글자 위 가운데. 화면 밖으로 나가면 안쪽으로 당긴다 */
+const placeTip=()=>{ const t=$('#tiBox'); t.style.marginLeft='0px'; const r=t.getBoundingClientRect(), W=document.documentElement.clientWidth; if(r.right>W-12) t.style.marginLeft=`${-Math.ceil(r.right-(W-12))}px`; else if(r.left<12) t.style.marginLeft=`${Math.ceil(12-r.left)}px`; };
 ['mouseenter','focusin','click'].forEach(ev=>$('.tinfo').addEventListener(ev,placeTip)); window.addEventListener('resize',placeTip);
 window.addEventListener('beforeunload',e=>{ if(B.items.length){ e.preventDefault(); e.returnValue=''; } });
 
@@ -1027,7 +1051,7 @@ $('#toPick').onclick=()=>{ const m=$('#upMsg');
 function renderUpload(){ $('#nonAI').checked=!!st.nonAI; $('#aiBox').hidden=!!st.nonAI;
   const s=$('#strip'); s.replaceChildren(...B.items.map(it=>{ const x=el('button',{type:'button','aria-label':`${it.no}번 ${it.name} 빼기`,title:'빼기'},'×');
     x.onclick=()=>{ B.items.splice(B.items.indexOf(it),1); URL.revokeObjectURL(it.thumb); if(it.url) URL.revokeObjectURL(it.url); regroup(); if(!B.madeSet) B.made=B.items.length; renderUpload(); navState(); };
-    const ast=it===aiCur?' scan':it.ai?(aiBad(it)?' bad':' ok'):'';
+    const ast=(it===aiCur||aiCurSet.has(it))?' scan':it.ai?(aiBad(it)?' bad':' ok'):'';
     return el('div',{class:'sth'+ast,title:it.name+(it.ai&&it.ai.note?` · AI: ${it.ai.note}`:'')},it.thumb?el('img',{src:it.thumb,alt:it.name}):el('span',{class:'ld'},'읽는 중'),it.loading?null:x,ast===' ok'?el('span',{class:'aqs'},'✓'):ast===' bad'?el('span',{class:'aqs'},'!'):null); }));
   $('#madeRow').hidden=!B.items.length; $('#upCount').textContent=B.items.length;
   $('#loadSamples').hidden=B.items.length>0; renderAiBar(); }
@@ -1045,13 +1069,13 @@ function cleanAI(a,topic){ a=a||{}; const issues=(Array.isArray(a.issues)?a.issu
   return {verdict:oneOf(a.verdict,['keep','fix','redo'],issues.length?'fix':'keep'),issues,note:typeof a.note==='string'?a.note.slice(0,80):''}; }
 async function smallJpeg(it){ const d=await decode(it.file), k=Math.min(1,768/Math.max(d.w,d.h)), c=canvasOf(d.w*k,d.h*k), g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(d.src,0,0,c.width,c.height); d.close(); return c.toDataURL('image/jpeg',0.85).split(',')[1]; }
 /* 내 키: 브라우저에서 Google로 바로 보낸다 (키가 우리 서버를 거치지 않음). 막히면 우리 서버를 통해 보낸다 */
-async function judgeOwn(image,topic){ const body=JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:image}},{text:AIPROMPT(topic)}]}],generationConfig:{responseMimeType:'application/json',temperature:0.2}});
+async function judgeOwn(image,topic){ const t0=Date.now(), mk=th=>JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:image}},{text:AIPROMPT(topic)}]}],generationConfig:Object.assign({responseMimeType:'application/json',temperature:0.2},th?{thinkingConfig:{thinkingLevel:th}}:{})});
   for(const m of AIMODELS){ let r;
-    try{ r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:'POST',headers:{'x-goog-api-key':userKey,'Content-Type':'application/json'},body}); }
+    try{ const go=th=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:'POST',headers:{'x-goog-api-key':userKey,'Content-Type':'application/json'},body:mk(th)}); r=await go('low'); if(r.status===400) r=await go(null); }
     catch(e){ return judgeServer(image,topic,true); }
     if(r.status===404) continue; if(r.status===429) return {err:'quota'}; if(r.status===400||r.status===401||r.status===403) return {err:'key'}; if(!r.ok) return {err:'server'};
     const j=await r.json().catch(()=>({})), t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join(''); let a={}; try{ a=JSON.parse(t.replace(/^```(json)?|```$/g,'').trim()); }catch(e){}
-    return {result:cleanAI(a,topic)}; }
+    return {result:Object.assign(cleanAI(a,topic),{model:m,ms:Date.now()-t0})}; }
   return {err:'server'}; }
 async function judgeServer(image,topic,withKey){ let r;
   try{ r=await fetch(AIEND,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,mime:'image/jpeg',topic,userKey:withKey?userKey:undefined})}); }catch(e){ return {err:'net'}; }
@@ -1060,7 +1084,7 @@ async function judgeServer(image,topic,withKey){ let r;
   if(!r.ok){ const j=await r.json().catch(()=>null); const e=j&&j.error;
     if(!j||r.status===404||r.status===405) return {err:'noapi'}; if(e==='nokey') return {err:'nokey'}; if(e==='origin') return {err:'origin'};
     if(e==='upstream') return {err:'upstream',detail:j.status}; if(e==='nomodel') return {err:'nomodel'}; return {err:'server'}; }
-  const j=await r.json().catch(()=>({})); return {result:cleanAI(j.result,topic)}; }
+  const j=await r.json().catch(()=>({})); return {result:Object.assign(cleanAI(j.result,topic),{model:j.model||'',ms:j.ms||0})}; }
 /* 판독은 배포한 사이트(Vercel)에서만 서버와 연결된다. 미리보기 창에서는 미리 알려 준다 */
 const AILIVE=/(^|\.)vercel\.app$|^localhost$|^127\./.test(location.hostname);
 const AIERR={noapi:'판독 서버를 찾을 수 없습니다. 이 미리보기 창이나, api/judge.js 파일 없이 배포된 사이트에서는 판독이 되지 않습니다.',nokey:'판독 서버에 Google API 키가 아직 등록되지 않았습니다. Vercel 설정의 환경 변수(GEMINI_API_KEY)에 키를 넣어야 무료 판독이 됩니다.',origin:'이 주소에서는 판독 서버를 쓸 수 없습니다. keepers-for-pixels 사이트에서 시도해 주세요.',upstream:'Google 쪽에서 판독을 거절했습니다.',nomodel:'쓸 수 있는 Gemini 모델을 찾지 못했습니다. 모델 이름을 확인해야 합니다.',limit:'오늘 이 사이트의 무료 판독 한도를 다 썼습니다. 내 API 키를 넣으면 계속 판독할 수 있습니다.',quota:'Google 사용량이 잠시 찼습니다. 1분쯤 뒤에 다시 눌러 주세요.',key:'API 키가 올바르지 않거나 이 모델을 쓸 권한이 없습니다. 키를 다시 확인해 주세요.',server:'판독 중 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.',net:'판독 서버에 연결할 수 없습니다. 이 미리보기 창에서는 동작하지 않고, 배포한 사이트에서 됩니다.'};
@@ -1077,7 +1101,7 @@ function renderAiBar(){ const L=B.items.filter(i=>i.checks), n=aiTargets().lengt
   $('#aiMode').textContent=own?(hasKey?'내 Google 요금제 기준으로 한도 없이 판독합니다. 이미지와 키는 이 브라우저에서 Google로 바로 갑니다.':'내 Gemini API 키를 연결하면 판독을 시작할 수 있습니다. 키가 없다면 "무료 판독"을 고르세요.'):'사이트가 제공하는 무료 모델로 판독합니다. 하루 판독 수에 한도가 있고, 결과가 부정확할 수 있습니다.';
   if(!AILIVE) $('#aiMode').textContent='※ 지금은 미리보기라 실제 판독이 연결되지 않습니다. 배포한 사이트에서만 동작합니다. '+$('#aiMode').textContent;
   const tp=topicNow(); $('#aiTopicLine').textContent=tp?`주제 "${tp.length>22?tp.slice(0,22)+'…':tp}"와 맞는지`:'위 칸에 주제를 적으면 함께 확인합니다';
-  const off=!L.length; $('#aiPanel').hidden=false; $('#aiPanel').classList.toggle('off',off); $('#aiPanel').setAttribute('aria-disabled',String(off));
+  const off=!L.length; $('#aiPanel').hidden=B.mode==='edit'; $('#aiPanel').classList.toggle('off',off); $('#aiPanel').setAttribute('aria-disabled',String(off));
   $('#aiPanel').classList.toggle('skipped',!!B.aiSkip&&!aiBusy); $('#aiSkip').hidden=aiBusy||!n||off;
   btn.disabled=aiBusy||!n||(own&&!hasKey); btn.classList.toggle('busy',aiBusy);
   btn.textContent=aiBusy?'판독 중…':off?'이미지를 올리면 시작할 수 있습니다':!n?'모두 판독했습니다':own&&!hasKey?'키를 연결하면 시작할 수 있습니다':`판독 시작 · ${n}장`;
@@ -1094,17 +1118,24 @@ function aiConsent(go){ const c=$('#aiConfirm'), key=aiModeNow(); if(P().aiOk===
   yes.onclick=()=>{ P().aiOk=key; save(); c.hidden=true; go(); }; no.onclick=()=>{ c.hidden=true; };
   c.replaceChildren(el('div',null,key==='own'?`판독을 시작하면 이미지 ${aiTargets().length}장을 작게 줄여 내 API 키로 Google(Gemini)에 보냅니다. 요금과 데이터 처리는 내 Google 계정의 조건을 따릅니다.`:`판독을 시작하면 이미지 ${aiTargets().length}장을 작게 줄여 Google(Gemini)로 보냅니다. 사이트가 제공하는 무료 모델이라 결과가 부정확할 수 있고, 무료 단계에서는 Google이 데이터를 제품 개선에 쓸 수 있습니다. 개인 사진이나 민감한 이미지는 판독하지 마세요.`),el('div',{class:'chips'},yes,no)); c.hidden=false; }
 function aiRefresh(){ if(view==='upload') renderUpload(); else if(view==='pick') renderPick(); else renderAiBar(); }
+let aiCurSet=new Set(), aiTick=0;
 async function aiJudge(){ const L=aiTargets(); if(!L.length||aiBusy) return; const own=aiModeNow()==='own'; if(own&&!userKey){ $('#aiKey').focus(); return; }
   aiBusy=true; aiStop=false; aiNote=''; const m=$('#aiMsg'); renderAiBar();
-  let i=0, fail=''; const topic=topicNow().replace(/["\n\r]/g,' ').slice(0,300).trim();
-  for(const it of L){ if(aiStop) break; i++; aiCur=it; aiRefresh(); m.textContent=`판독 중 ${i} / ${L.length} · ${it.no}번`;
-    let out; try{ const image=await smallJpeg(it); out=own?await judgeOwn(image,topic):await judgeServer(image,topic,false); }catch(e){ out={err:'server'}; }
-    if(out.err){ fail=AIERR[out.err]+(out.detail?` (오류 코드 ${out.detail})`:''); if(out.err==='limit'){ fail='오늘 이 사이트의 무료 판독 한도를 다 썼습니다. "내 API 키"로 바꾸면 계속 판독할 수 있습니다.'; } break; }
-    const a=out.result; it.ai=a; B.aiCount=(B.aiCount||0)+1; if(own) B.aiOwn=(B.aiOwn||0)+1;
-    AIK.forEach(([k,,ts])=>{ it.checks[k]=a.issues.some(x=>ts.includes(x.type)); });
-    if(it.state==='skip'&&!it.reason) it.reason=guessReason(it);
-    aiRefresh(); await new Promise(r=>setTimeout(r,450)); }
-  aiCur=null; aiBusy=false; const done=B.items.filter(x=>x.ai).length; aiNote=fail?(done?`${done}장까지 판독했습니다. `:'')+fail:''; aiRefresh(); }
+  let fail='', next=0, done0=0; const topic=topicNow().replace(/["\n\r]/g,' ').slice(0,300).trim(), t0=Date.now();
+  const show=()=>{ const s=Math.round((Date.now()-t0)/1000), cur=[...aiCurSet].map(i=>i.no+'번').join(', '); m.textContent=`판독 중 ${done0} / ${L.length}장 완료${cur?` · ${cur} 보는 중`:''} · ${s}초`; };
+  clearInterval(aiTick); aiTick=setInterval(show,1000);
+  /* 두 장씩 동시에 보낸다 (무료 사용량 한도를 고려해 2장까지만) */
+  const worker=async()=>{ while(!aiStop&&!fail&&next<L.length){ const it=L[next++]; aiCurSet.add(it); aiCur=it; aiRefresh(); show();
+      let out; try{ const image=await smallJpeg(it); out=own?await judgeOwn(image,topic):await judgeServer(image,topic,false); }catch(e){ out={err:'server'}; }
+      aiCurSet.delete(it); aiCur=[...aiCurSet][0]||null;
+      if(out.err){ if(!fail){ fail=AIERR[out.err]+(out.detail?` (오류 코드 ${out.detail})`:''); if(out.err==='limit') fail='오늘 이 사이트의 무료 판독 한도를 다 썼습니다. "내 API 키"로 바꾸면 계속 판독할 수 있습니다.'; } break; }
+      const a=out.result; it.ai=a; done0++; B.aiCount=(B.aiCount||0)+1; if(own) B.aiOwn=(B.aiOwn||0)+1;
+      AIK.forEach(([k,,ts])=>{ it.checks[k]=a.issues.some(x=>ts.includes(x.type)); });
+      if(it.state==='skip'&&!it.reason) it.reason=guessReason(it);
+      aiRefresh(); show(); } };
+  await Promise.all([worker(),worker()]);
+  clearInterval(aiTick); aiCur=null; aiCurSet.clear(); aiBusy=false; const done=B.items.filter(x=>x.ai).length, sec=Math.round((Date.now()-t0)/1000);
+  aiNote=fail?(done?`${done}장까지 판독했습니다. `:'')+fail:(done0?`${done0}장 판독 완료 · ${sec}초 걸림`:''); aiRefresh(); }
 $('#aiRun').onclick=()=>aiConsent(aiJudge);
 $('#aiSkip').onclick=()=>{ B.aiSkip=true; renderAiBar(); };
 $('#aiUnskip').onclick=()=>{ B.aiSkip=false; renderAiBar(); };
@@ -1151,7 +1182,7 @@ function renderPick(){ const K=keeps().length, S=B.items.filter(i=>i.state==='sk
   const L=pickList(), g=$('#pgrid');
   g.replaceChildren(...L.map(it=>{ const ph=el('button',{class:'ph',type:'button','aria-label':cmpMode?`${it.no}번 비교에 넣기`:`${it.no}번 크게 보기`},el('img',{src:it.thumb,alt:it.name,loading:'lazy'}),el('span',{class:'no'},String(it.no)));
     ph.onclick=()=>{ if(cmpMode){ const i=cmpSel.indexOf(it.id); if(i>=0) cmpSel.splice(i,1); else { cmpSel.push(it.id); if(cmpSel.length>2) cmpSel.shift(); } if(cmpSel.length===2) openViewer(cmpSel.slice()); else renderPick(); } else openViewer(it.id); };
-    if(it===aiCur) ph.classList.add('scanning');
+    if(it===aiCur||aiCurSet.has(it)) ph.classList.add('scanning');
     return el('div',{class:`pc ${it.state}${cmpSel.includes(it.id)?' sel':''}`},ph,el('div',{class:'meta'},el('span',null,`${it.w}×${it.h}`),el('span',null,kb(it.size))),el('div',{class:'bdg'},badges(it)),segOf(it),it.state==='skip'?reasonSel(it):null); }));
   if(!L.length) g.append(el('p',{class:'q'},'이 조건에 맞는 이미지가 없습니다.'));
   $('#toEdit').textContent=`Keep ${K}장 편집하기`; $('#rawExport').disabled=!K; navState(); }
@@ -1174,7 +1205,7 @@ const VERD={keep:['그대로 써도 됨','ok'],fix:['손보면 쓸 수 있음','
 const TYPEK={hand:'손가락·손',face:'얼굴·눈',body:'몸·팔다리',text:'글자',object:'사물',background:'배경·원근·그림자',topic:'주제'};
 function aiReport(it){ const a=it.ai, v=VERD[a.verdict]||VERD.keep;
   return el('div',{class:'airep'},el('div',{class:'arh'},el('span',{class:'verd '+v[1]},'AI 판정 · '+v[0]),a.note?el('span',{class:'arn'},a.note):null),
-    a.issues.length?el('ol',{class:'aril'},a.issues.map(x=>el('li',null,el('b',null,TYPEK[x.type]||x.type),' ',x.label||'',x.box_2d?null:el('small',null,' (위치 표시 없음)')))):el('p',{class:'arok'},'AI가 찾은 결함이 없습니다.')); }
+    el('small',{class:'armeta'},[a.model?`판독 모델 ${a.model}`:'',a.ms?`${Math.round(a.ms/100)/10}초`:''].filter(Boolean).join(' · ')),a.issues.length?el('ol',{class:'aril'},a.issues.map(x=>el('li',null,el('b',null,TYPEK[x.type]||x.type),' ',x.label||'',x.box_2d?null:el('small',null,' (위치 표시 없음)')))):el('p',{class:'arok'},'AI가 찾은 결함이 없습니다.')); }
 
 // 크게 보기·2장 비교
 let aiOverlay=true;

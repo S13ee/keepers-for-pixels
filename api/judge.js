@@ -69,19 +69,24 @@ module.exports = async (req, res) => {
   total++; perIp.set(ip, used + 1);
   }
 
-  const payload = JSON.stringify({
+  // 생각 단계(thinking)를 낮춰 판독 시간을 줄인다. 환경 변수 GEMINI_THINKING으로 바꿀 수 있다 (low / medium / high)
+  const THINK = pick(process.env.GEMINI_THINKING, ['minimal', 'low', 'medium', 'high'], 'low');
+  const body2 = think => JSON.stringify({
     contents: [{ parts: [{ inline_data: { mime_type: mime, data: image } }, { text: PROMPT(topic) }] }],
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+    generationConfig: Object.assign({ responseMimeType: 'application/json', temperature: 0.2 }, think ? { thinkingConfig: { thinkingLevel: think } } : {}),
   });
+  const t0 = Date.now();
 
   for (const model of MODELS) {
     let r;
+    const send = think => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+      body: body2(think),
+    });
     try {
-      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST',
-        headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-        body: payload,
-      });
+      r = await send(THINK);
+      if (r.status === 400) r = await send(null); // 생각 단계 설정을 모르는 모델이면 설정 없이 다시
     } catch (e) {
       return res.status(502).json({ error: 'network' });
     }
@@ -94,7 +99,7 @@ module.exports = async (req, res) => {
     let a = {};
     try { a = JSON.parse(text.replace(/^```(json)?|```$/g, '').trim()); } catch (e) { a = {}; }
     const result = clean(a, topic);
-    return res.status(200).json({ ok: true, model, result });
+    return res.status(200).json({ ok: true, model, ms: Date.now() - t0, result });
   }
   return res.status(502).json({ error: 'nomodel' });
 };
