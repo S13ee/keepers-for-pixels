@@ -1097,25 +1097,25 @@ function cleanAI(a,topic){ a=a||{}; const issues=(Array.isArray(a.issues)?a.issu
 const AISIDE=1536, AITHINK='medium';
 async function smallJpeg(it){ const d=await decode(it.file), k=Math.min(1,AISIDE/Math.max(d.w,d.h)), c=canvasOf(d.w*k,d.h*k), g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(d.src,0,0,c.width,c.height); d.close(); return c.toDataURL('image/jpeg',0.85).split(',')[1]; }
 /* 내 키: 브라우저에서 Google로 바로 보낸다 (키가 우리 서버를 거치지 않음). 막히면 우리 서버를 통해 보낸다 */
-async function judgeOwn(image,topic){ let quota=false; const t0=Date.now(), mk=th=>JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:image}},{text:AIPROMPT(topic)}]}],generationConfig:Object.assign({responseMimeType:'application/json',temperature:0.2},th?{thinkingConfig:{thinkingLevel:th}}:{})});
+async function judgeOwn(image,topic){ let quota=false, busy=false; const t0=Date.now(), mk=th=>JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:image}},{text:AIPROMPT(topic)}]}],generationConfig:Object.assign({responseMimeType:'application/json',temperature:0.2},th?{thinkingConfig:{thinkingLevel:th}}:{})});
   for(const m of AIMODELS){ let r;
-    try{ const go=th=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:'POST',headers:{'x-goog-api-key':userKey,'Content-Type':'application/json'},body:mk(th)}); r=await go(AITHINK); if(r.status===400) r=await go(null); }
+    try{ const go=th=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:'POST',headers:{'x-goog-api-key':userKey,'Content-Type':'application/json'},body:mk(th)}); r=await go(AITHINK); if(r.status===400) r=await go(null); if(r.status>=500){ await new Promise(z=>setTimeout(z,1500)); r=await go(AITHINK); } }
     catch(e){ return judgeServer(image,topic,true); }
-    if(r.status===404) continue; if(r.status===429){ quota=true; continue; } if(r.status===400||r.status===401||r.status===403) return {err:'key'}; if(!r.ok) return {err:'server'};
+    if(r.status===404) continue; if(r.status===429){ quota=true; continue; } if(r.status>=500){ busy=true; continue; } if(r.status===400||r.status===401||r.status===403) return {err:'key'}; if(!r.ok) return {err:'server'};
     const j=await r.json().catch(()=>({})), t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join(''); let a={}; try{ a=JSON.parse(t.replace(/^```(json)?|```$/g,'').trim()); }catch(e){}
     return {result:Object.assign(cleanAI(a,topic),{model:m,ms:Date.now()-t0})}; }
-  return {err:quota?'quota':'server'}; }
+  return {err:busy?'busy':quota?'quota':'server'}; }
 async function judgeServer(image,topic,withKey){ let r;
   try{ r=await fetch(AIEND,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,mime:'image/jpeg',topic,userKey:withKey?userKey:undefined})}); }catch(e){ return {err:'net'}; }
   if(r.status===429){ const j=await r.json().catch(()=>({})); return {err:j.error==='limit'?'limit':'quota'}; }
   if(r.status===401) return {err:'key'};
   if(!r.ok){ const j=await r.json().catch(()=>null); const e=j&&j.error;
     if(!j||r.status===404||r.status===405) return {err:'noapi'}; if(e==='nokey') return {err:'nokey'}; if(e==='origin') return {err:'origin'};
-    if(e==='upstream') return {err:'upstream',detail:j.status}; if(e==='nomodel') return {err:'nomodel'}; return {err:'server'}; }
+    if(e==='busy') return {err:'busy'}; if(e==='upstream') return {err:'upstream',detail:j.status}; if(e==='nomodel') return {err:'nomodel'}; return {err:'server'}; }
   const j=await r.json().catch(()=>({})); return {result:Object.assign(cleanAI(j.result,topic),{model:j.model||'',ms:j.ms||0})}; }
 /* 판독은 배포한 사이트(Vercel)에서만 서버와 연결된다. 미리보기 창에서는 미리 알려 준다 */
 const AILIVE=/(^|\.)vercel\.app$|^localhost$|^127\./.test(location.hostname);
-const AIERR={noapi:'판독 서버를 찾을 수 없습니다. 이 미리보기 창이나, api/judge.js 파일 없이 배포된 사이트에서는 판독이 되지 않습니다.',nokey:'판독 서버에 Google API 키가 아직 등록되지 않았습니다. Vercel 설정의 환경 변수(GEMINI_API_KEY)에 키를 넣어야 무료 판독이 됩니다.',origin:'이 주소에서는 판독 서버를 쓸 수 없습니다. keepers-for-pixels 사이트에서 시도해 주세요.',upstream:'Google 쪽에서 판독을 거절했습니다.',nomodel:'쓸 수 있는 Gemini 모델을 찾지 못했습니다. 모델 이름을 확인해야 합니다.',limit:'오늘 이 사이트의 무료 판독 한도를 다 썼습니다. 내 API 키를 넣으면 계속 판독할 수 있습니다.',quota:'Google 사용량이 잠시 찼습니다. 1분쯤 뒤에 다시 눌러 주세요.',key:'API 키가 올바르지 않거나 이 모델을 쓸 권한이 없습니다. 키를 다시 확인해 주세요.',server:'판독 중 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.',net:'판독 서버에 연결할 수 없습니다. 이 미리보기 창에서는 동작하지 않고, 배포한 사이트에서 됩니다.'};
+const AIERR={noapi:'판독 서버를 찾을 수 없습니다. 이 미리보기 창이나, api/judge.js 파일 없이 배포된 사이트에서는 판독이 되지 않습니다.',nokey:'판독 서버에 Google API 키가 아직 등록되지 않았습니다. Vercel 설정의 환경 변수(GEMINI_API_KEY)에 키를 넣어야 무료 판독이 됩니다.',origin:'이 주소에서는 판독 서버를 쓸 수 없습니다. keepers-for-pixels 사이트에서 시도해 주세요.',upstream:'Google 쪽에서 판독을 거절했습니다.',busy:'Google 판독 서버가 지금 붐빕니다(일시적인 문제). 1~2분 뒤 다시 눌러 주세요. 판독한 이미지는 그대로 남아 있습니다.',nomodel:'쓸 수 있는 Gemini 모델을 찾지 못했습니다. 모델 이름을 확인해야 합니다.',limit:'오늘 이 사이트의 무료 판독 한도를 다 썼습니다. 내 API 키를 넣으면 계속 판독할 수 있습니다.',quota:'Google 사용량이 잠시 찼습니다. 1분쯤 뒤에 다시 눌러 주세요.',key:'API 키가 올바르지 않거나 이 모델을 쓸 권한이 없습니다. 키를 다시 확인해 주세요.',server:'판독 중 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.',net:'판독 서버에 연결할 수 없습니다. 이 미리보기 창에서는 동작하지 않고, 배포한 사이트에서 됩니다.'};
 function aiTargets(){ return B.items.filter(i=>i.checks&&!i.ai); }
 const topicNow=()=>(($('#prompt').value||B.prompt||'').trim());
 const aiModeNow=()=>P().aiMode==='free'?'free':'own';

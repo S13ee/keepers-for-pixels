@@ -86,7 +86,8 @@ module.exports = async (req, res) => {
     generationConfig: Object.assign({ responseMimeType: 'application/json', temperature: 0.2 }, think ? { thinkingConfig: { thinkingLevel: think } } : {}),
   });
   const t0 = Date.now();
-  let quota = false;
+  let quota = false, busy = false;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
 
   for (const model of MODELS) {
     let r;
@@ -98,11 +99,13 @@ module.exports = async (req, res) => {
     try {
       r = await send(THINK);
       if (r.status === 400) r = await send(null); // 생각 단계 설정을 모르는 모델이면 설정 없이 다시
+      if (r.status >= 500) { await wait(1500); r = await send(THINK); } // Google 서버가 잠깐 바쁘면(503 등) 한 번 더
     } catch (e) {
       return res.status(502).json({ error: 'network' });
     }
     if (r.status === 404) continue; // 이 이름의 모델이 없으면 다음 후보로
     if (r.status === 429) { quota = true; continue; } // 이 모델 사용량이 찼으면 다음(더 가벼운) 모델로
+    if (r.status >= 500) { busy = true; continue; }   // 다시 해도 바쁘면 다음 모델로
     if (own && (r.status === 400 || r.status === 401 || r.status === 403)) return res.status(401).json({ error: 'key' });
     if (!r.ok) return res.status(502).json({ error: 'upstream', status: r.status });
     const j = await r.json().catch(() => ({}));
@@ -112,6 +115,7 @@ module.exports = async (req, res) => {
     const result = clean(a, topic);
     return res.status(200).json({ ok: true, model, ms: Date.now() - t0, result });
   }
+  if (busy) return res.status(503).json({ error: 'busy' });
   if (quota) return res.status(429).json({ error: 'quota' });
   return res.status(502).json({ error: 'nomodel' });
 };
