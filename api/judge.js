@@ -13,13 +13,13 @@ const MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 let day = '', total = 0;
 const perIp = new Map();
 
-const PROMPT = topic => "너는 AI 생성 이미지의 결함을 찾는 신중한 검수 전문가야. 없는 문제를 지어내는 것은 문제를 놓치는 것보다 더 나쁜 실수야.\n먼저 scene에 장면을 한두 문장으로 적어: 누가 있는지, 각 인물이 어디를 보며 무엇을 하는지, 화면·책·거울이 어느 쪽을 향하는지.\n그다음 아래 8가지를 하나씩 확인해.\n1. hand: 손가락이 5개가 아님(6개, 4개), 손가락이 붙거나 녹아듦, 관절이 반대로 꺾임, 손이 너무 많음, 손목이 팔과 맞지 않게 돌아감, 손바닥·손등 방향이 팔의 방향과 뒤바뀜(손이 거꾸로 붙은 것처럼 보임). 사람마다 두 손을 각각 팔에서 손끝까지 따라가며 확인해. 손 모양이 분명히 보이는 손만 판단하고, 가려지거나 흐려서 알아볼 수 없는 손, 화풍 때문에 단순하게 그린 손은 넣지 마.\n2. face: 두 눈의 크기·방향이 다름, 이상한 치아·귀·눈동자, 녹아내리거나 뭉개진 얼굴, 군중 속에 똑같이 복제된 얼굴\n3. body: 팔다리 개수·길이 이상, 몸이 사물이나 다른 사람과 합쳐짐, 불가능한 자세, 동물의 다리·꼬리 개수 이상\n4. text: 철자가 깨진 글자, 읽을 수 없는 글자 모양, 엉터리 간판·로고, 시계 숫자판·키보드 자판·피아노 건반의 배열 이상\n5. object: 사물끼리 녹아 붙음, 끊기거나 엉뚱하게 이어지는 선(난간·전선·줄·끈·기타 줄), 짝이 안 맞는 안경·귀걸이·신발, 물리적으로 불가능한 구조\n6. background: 휘어진 직선, 어긋난 원근, 그림자·반사 방향이 맞지 않음, 머리카락·옷이 배경에 녹아드는 경계\n7. logic: 장면의 앞뒤가 안 맞음 - 인물이 보는 화면·책이 인물 반대쪽을 향함, 거울 속 모습이 실제와 다름, 시선과 행동이 맞지 않음, 물건을 불가능한 방식으로 쥠, 받침 없이 떠 있는 물건\n8. topic: TOPIC_RULE\nPROMPT_RULE\n규칙:\n- 각 문제마다 confidence를 적어. high=이미지에서 분명히 보이고 누가 봐도 틀림, medium=그럴 수도 있음, low=애매함.\n- 의도된 화풍(만화·일러스트의 과장, 단순화)은 결함이 아니야. 같은 문제는 한 번만 넣어.\n- 각 문제의 위치를 box_2d [ymin, xmin, ymax, xmax] (0~1000 기준)로 표시해. 문제가 없으면 issues는 빈 배열이야.\n아래 JSON 하나로만 답해:\n{\"scene\":\"장면 설명\",\"verdict\":\"keep|fix|redo\",\"issues\":[{\"type\":\"hand|face|body|text|object|background|logic|topic\",\"label\":\"한국어 15자 이내 설명\",\"confidence\":\"high|medium|low\",\"box_2d\":[0,0,0,0]}],\"note\":\"한국어 한 문장 요약\"}\nverdict는 confidence가 high인 문제만 보고 정해: keep=그대로 써도 됨, fix=자르기·편집으로 가릴 수 있는 작은 문제, redo=다시 만드는 편이 나음".replace('TOPIC_RULE', topic ? '사용자가 적은 주제·프롬프트와 이미지 내용이 확실히 다름' : '주제가 없으니 검사하지 않음')
+const PROMPT = topic => "너는 AI 생성 이미지의 결함을 찾는 꼼꼼한 검수 전문가야. 의심되는 곳은 빠뜨리지 말고 모두 적되, 얼마나 확실한지는 confidence로 정직하게 표시해.\n먼저 scene에 장면을 한두 문장으로 적어: 누가 있는지, 각 인물이 어디를 보며 무엇을 하는지, 화면·책·거울이 어느 쪽을 향하는지.\n그다음 아래 8가지를 하나씩 확인해.\n1. hand: 사람마다 보이는 손을 하나씩, 팔에서 손목을 거쳐 손끝까지 따라가며 확인해. 손가락 개수(5개), 붙거나 녹아든 손가락, 반대로 꺾인 관절, 너무 많은 손, 팔과 맞지 않게 돌아간 손목, 손바닥·손등과 엄지 위치가 그 팔의 손으로 불가능함(왼손·오른손이 뒤바뀐 듯 보임). 가려져서 전혀 안 보이는 손만 빼.\n2. face: 두 눈의 크기·방향이 다름, 이상한 치아·귀·눈동자, 녹아내리거나 뭉개진 얼굴, 군중 속에 똑같이 복제된 얼굴\n3. body: 팔다리 개수·길이 이상, 몸이 사물이나 다른 사람과 합쳐짐, 불가능한 자세, 동물의 다리·꼬리 개수 이상\n4. text: 철자가 깨진 글자, 읽을 수 없는 글자 모양, 엉터리 간판·로고, 시계 숫자판·키보드 자판·피아노 건반의 배열 이상\n5. object: 사물끼리 녹아 붙음, 끊기거나 엉뚱하게 이어지는 선(난간·전선·줄·끈·기타 줄), 짝이 안 맞는 안경·귀걸이·신발, 물리적으로 불가능한 구조\n6. background: 휘어진 직선, 어긋난 원근, 그림자·반사 방향이 맞지 않음, 머리카락·옷이 배경에 녹아드는 경계\n7. logic: 장면의 앞뒤가 안 맞음 - 인물이 보는 화면·책이 인물 반대쪽을 향함, 거울 속 모습이 실제와 다름, 시선과 행동이 맞지 않음, 물건을 불가능한 방식으로 쥠, 받침 없이 떠 있는 물건\n8. topic: TOPIC_RULE\nPROMPT_RULE\n규칙:\n- confidence: high=이미지에서 분명히 보이고 누가 봐도 틀림, medium=틀린 것 같지만 확대해 봐야 확실함, low=애매함. 의심되면 confidence를 낮춰서라도 적어.\n- 의도된 화풍(만화·일러스트의 과장, 단순화)은 결함이 아니야. 같은 문제는 한 번만 넣어.\n- 각 문제의 위치를 box_2d [ymin, xmin, ymax, xmax] (0~1000 기준)로 표시해. 문제가 없으면 issues는 빈 배열이야.\n아래 JSON 하나로만 답해:\n{\"scene\":\"장면 설명\",\"verdict\":\"keep|fix|redo\",\"issues\":[{\"type\":\"hand|face|body|text|object|background|logic|topic\",\"label\":\"한국어 15자 이내 설명\",\"confidence\":\"high|medium|low\",\"box_2d\":[0,0,0,0]}],\"note\":\"한국어 한 문장 요약\"}\nverdict는 confidence가 high인 문제만 보고 정해: keep=그대로 써도 됨, fix=자르기·편집으로 가릴 수 있는 작은 문제, redo=다시 만드는 편이 나음".replace('TOPIC_RULE', topic ? '사용자가 적은 주제·프롬프트와 이미지 내용이 확실히 다름' : '주제가 없으니 검사하지 않음')
   .replace('PROMPT_RULE', topic ? `사용자가 이 이미지를 만들 때 적은 주제·프롬프트: "${topic}"\n이 글은 만든 사람의 의도(어떤 장면인지, 일부러 과장한 표현인지, 빠진 요소가 있는지)를 파악하는 데만 써. 손·얼굴·몸 같은 형태 결함은 이 글에 끌려가지 말고 이미지만 보고 판단해.` : '');
 
 const pick = (v, list, d) => (list.includes(v) ? v : d);
 const TYPES = ['hand', 'face', 'body', 'text', 'object', 'background', 'logic', 'topic'];
 // 모델 답을 정해진 모양으로만 다듬어 돌려준다 (잘못된 값은 버림)
-// 오탐을 줄이려고 확신도(confidence)가 high인 문제만 남기고, 판정도 남은 문제 기준으로 맞춘다
+// 확신도(confidence)별로 나눠 돌려준다: high=issues, medium=maybe, low=weak. 판정은 high 기준으로 맞춘다
 function clean(a, topic) {
   a = a || {};
   const all = (Array.isArray(a.issues) ? a.issues : []).filter(x => x && typeof x === 'object');
@@ -30,8 +30,9 @@ function clean(a, topic) {
   };
   const ok = x => x.type && (x.type !== 'topic' || topic);
   const issues = all.filter(x => x.confidence === undefined || x.confidence === 'high').map(item).filter(ok).slice(0, 8);
-  // medium은 배지로 쓰지 않고, 리포트에 '확신 낮음'으로만 보여 준다
+  // medium은 노란 '의심' 배지, low는 리포트에만 '가능성 낮음'으로 보여 준다
   const maybe = all.filter(x => x.confidence === 'medium').map(item).filter(ok).slice(0, 6);
+  const weak = all.filter(x => x.confidence === 'low').map(item).filter(ok).slice(0, 6);
   let verdict = pick(a.verdict, ['keep', 'fix', 'redo'], 'fix');
   if (!issues.length) verdict = 'keep'; else if (verdict === 'keep') verdict = 'fix';
   const has = t => issues.some(x => x.type === t);
@@ -39,6 +40,7 @@ function clean(a, topic) {
     verdict,
     issues,
     maybe,
+    weak,
     scene: typeof a.scene === 'string' ? a.scene.slice(0, 200) : '',
     note: typeof a.note === 'string' ? a.note.slice(0, 80) : '',
     hand: has('hand') || has('face') || has('body') ? 'bad' : 'ok',
@@ -81,8 +83,8 @@ module.exports = async (req, res) => {
   total++; perIp.set(ip, used + 1);
   }
 
-  // 생각 단계(thinking): 장면의 앞뒤(화면 방향 등)까지 따지도록 medium. 환경 변수 GEMINI_THINKING으로 바꿀 수 있다 (low / medium / high)
-  const THINK = pick(process.env.GEMINI_THINKING, ['minimal', 'low', 'medium', 'high'], 'medium');
+  // 생각 단계(thinking): 속도를 위해 low (medium은 판독이 1분 넘게 걸리는 일이 잦았음). 환경 변수 GEMINI_THINKING으로 바꿀 수 있다 (low / medium / high)
+  const THINK = pick(process.env.GEMINI_THINKING, ['minimal', 'low', 'medium', 'high'], 'low');
   const body2 = think => JSON.stringify({
     contents: [{ parts: [{ inline_data: { mime_type: mime, data: image } }, { text: PROMPT(topic) }] }],
     generationConfig: Object.assign({ responseMimeType: 'application/json', temperature: 0.2 }, think ? { thinkingConfig: { thinkingLevel: think } } : {}),
