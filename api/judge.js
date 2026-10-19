@@ -88,21 +88,27 @@ module.exports = async (req, res) => {
     generationConfig: Object.assign({ responseMimeType: 'application/json', temperature: 0.2 }, think ? { thinkingConfig: { thinkingLevel: think } } : {}),
   });
   const t0 = Date.now();
+  // Vercel 무료 요금제의 최대 실행 시간(300초)에 걸려 강제로 끊기기 전에, 280초가 되면 스스로 멈추고 알려 준다
+  const DEADLINE = t0 + 280000;
+  const timedOut = () => res.status(504).json({ error: 'timeout' });
   let quota = false, busy = false;
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
   for (const model of MODELS) {
+    if (Date.now() > DEADLINE - 3000) return timedOut();
     let r;
     const send = think => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
       body: body2(think),
+      signal: AbortSignal.timeout(Math.max(1000, DEADLINE - Date.now())),
     });
     try {
       r = await send(THINK);
       if (r.status === 400) r = await send(null); // 생각 단계 설정을 모르는 모델이면 설정 없이 다시
       if (r.status >= 500) { await wait(1500); r = await send(THINK); } // Google 서버가 잠깐 바쁘면(503 등) 한 번 더
     } catch (e) {
+      if (Date.now() >= DEADLINE - 1000) return timedOut();
       return res.status(502).json({ error: 'network' });
     }
     if (r.status === 404) continue; // 이 이름의 모델이 없으면 다음 후보로

@@ -646,6 +646,9 @@
   /* ── 수정 18: 리포트에 'AI가 본 장면'과 '확신 낮음' 항목 ── */
   .armaybe,.arscene{margin:6px 0 0;font-size:12px;line-height:1.55;color:rgba(255,255,255,.6)}
   .armaybe b,.arscene b{color:rgba(255,255,255,.78);font-weight:700}
+
+  /* ── 수정 19: 판독이 1분 넘게 걸릴 때 안내 ── */
+  .aislow{display:block;margin-top:4px;color:#f5d061;font-weight:700}
 </style>
 </head>
 <body>
@@ -741,7 +744,7 @@
         <p class="ainote" id="aiMode"></p>
         <div class="airun">
           <button class="btn lg aigo" type="button" id="aiRun">판독 시작</button>
-          <button class="tlink" type="button" id="aiStopBtn" hidden>멈추기</button>
+          <button class="tlink" type="button" id="aiStopBtn" hidden>판독 정지</button>
         <button class="tlink" type="button" id="aiSkip">판독 건너뛰기</button>
           <div class="aiprog" aria-hidden="true"><i id="aiBarFill"></i></div>
           <span class="aimsg" id="aiMsg" role="status"></span>
@@ -1085,7 +1088,9 @@ function renderUpload(){ $('#nonAI').checked=!!st.nonAI; $('#aiBox').hidden=!!st
   $('#loadSamples').hidden=B.items.length>0; renderAiBar(); }
 
 // ── AI 판독: 이미지를 줄여 우리 서버(/api/judge)로 보내면, 서버가 숨겨 둔 키로 Gemini에 물어 결과를 돌려준다
-let aiBusy=false, aiStop=false, aiNote='';
+let aiBusy=false, aiStop=false, aiNote='', aiAbort=null;
+/* 판독 정지: 보내 둔 요청까지 바로 끊는다 */
+const aiSig=()=>aiAbort?aiAbort.signal:undefined;
 const AIEND='/api/judge', AIMODELS=['gemini-flash-latest','gemini-3.8-flash','gemini-flash-lite-latest'], KEYSTORE='keepers-pixels.gkey';
 /* 사용자 키: 기억하기를 켠 경우에만 이 브라우저에 저장한다 */
 let userKey=''; try{ userKey=localStorage.getItem(KEYSTORE)||''; }catch(e){}
@@ -1105,23 +1110,24 @@ async function smallJpeg(it){ const d=await decode(it.file), k=Math.min(1,AISIDE
 /* 내 키: 브라우저에서 Google로 바로 보낸다 (키가 우리 서버를 거치지 않음). 막히면 우리 서버를 통해 보낸다 */
 async function judgeOwn(image,topic){ let quota=false, busy=false; const t0=Date.now(), mk=th=>JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:image}},{text:AIPROMPT(topic)}]}],generationConfig:Object.assign({responseMimeType:'application/json',temperature:0.2},th?{thinkingConfig:{thinkingLevel:th}}:{})});
   for(const m of AIMODELS){ let r;
-    try{ const go=th=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:'POST',headers:{'x-goog-api-key':userKey,'Content-Type':'application/json'},body:mk(th)}); r=await go(AITHINK); if(r.status===400) r=await go(null); if(r.status>=500){ await new Promise(z=>setTimeout(z,1500)); r=await go(AITHINK); } }
-    catch(e){ return judgeServer(image,topic,true); }
+    try{ const go=th=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:'POST',headers:{'x-goog-api-key':userKey,'Content-Type':'application/json'},body:mk(th),signal:aiSig()}); r=await go(AITHINK); if(r.status===400) r=await go(null); if(r.status>=500){ await new Promise(z=>setTimeout(z,1500)); r=await go(AITHINK); } }
+    catch(e){ if(aiStop) return {err:'stopped'}; return judgeServer(image,topic,true); }
     if(r.status===404) continue; if(r.status===429){ quota=true; continue; } if(r.status>=500){ busy=true; continue; } if(r.status===400||r.status===401||r.status===403) return {err:'key'}; if(!r.ok) return {err:'server'};
     const j=await r.json().catch(()=>({})), t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join(''); let a={}; try{ a=JSON.parse(t.replace(/^```(json)?|```$/g,'').trim()); }catch(e){}
     return {result:Object.assign(cleanAI(a,topic),{model:m,ms:Date.now()-t0})}; }
   return {err:busy?'busy':quota?'quota':'server'}; }
 async function judgeServer(image,topic,withKey){ let r;
-  try{ r=await fetch(AIEND,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,mime:'image/jpeg',topic,userKey:withKey?userKey:undefined})}); }catch(e){ return {err:'net'}; }
+  try{ r=await fetch(AIEND,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,mime:'image/jpeg',topic,userKey:withKey?userKey:undefined}),signal:aiSig()}); }catch(e){ return {err:aiStop?'stopped':'net'}; }
   if(r.status===429){ const j=await r.json().catch(()=>({})); return {err:j.error==='limit'?'limit':'quota'}; }
   if(r.status===401) return {err:'key'};
   if(!r.ok){ const j=await r.json().catch(()=>null); const e=j&&j.error;
-    if(!j||r.status===404||r.status===405) return {err:'noapi'}; if(e==='nokey') return {err:'nokey'}; if(e==='origin') return {err:'origin'};
+    /* 서버가 정말 없을 때(404·405)만 '찾을 수 없음'. 알아볼 수 없는 답은 일시적인 오류로 본다 */
+    if(r.status===404||r.status===405) return {err:'noapi'}; if(!j) return {err:r.status===504?'timeout':'temp'}; if(e==='timeout') return {err:'timeout'}; if(e==='nokey') return {err:'nokey'}; if(e==='origin') return {err:'origin'};
     if(e==='busy') return {err:'busy'}; if(e==='upstream') return {err:'upstream',detail:j.status}; if(e==='nomodel') return {err:'nomodel'}; return {err:'server'}; }
   const j=await r.json().catch(()=>({})); return {result:Object.assign(cleanAI(j.result,topic),{model:j.model||'',ms:j.ms||0})}; }
 /* 판독은 배포한 사이트(Vercel)에서만 서버와 연결된다. 미리보기 창에서는 미리 알려 준다 */
 const AILIVE=/(^|\.)vercel\.app$|^localhost$|^127\./.test(location.hostname);
-const AIERR={noapi:'판독 서버를 찾을 수 없습니다. 이 미리보기 창이나, api/judge.js 파일 없이 배포된 사이트에서는 판독이 되지 않습니다.',nokey:'판독 서버에 Google API 키가 아직 등록되지 않았습니다. Vercel 설정의 환경 변수(GEMINI_API_KEY)에 키를 넣어야 무료 판독이 됩니다.',origin:'이 주소에서는 판독 서버를 쓸 수 없습니다. keepers-for-pixels 사이트에서 시도해 주세요.',upstream:'Google 쪽에서 판독을 거절했습니다.',busy:'Google 판독 서버가 지금 붐빕니다(일시적인 문제). 1~2분 뒤 다시 눌러 주세요. 판독한 이미지는 그대로 남아 있습니다.',nomodel:'쓸 수 있는 Gemini 모델을 찾지 못했습니다. 모델 이름을 확인해야 합니다.',limit:'오늘 이 사이트의 무료 판독 한도를 다 썼습니다. 내 API 키를 넣으면 계속 판독할 수 있습니다.',quota:'Google 사용량이 잠시 찼습니다. 1분쯤 뒤에 다시 눌러 주세요.',key:'API 키가 올바르지 않거나 이 모델을 쓸 권한이 없습니다. 키를 다시 확인해 주세요.',server:'판독 중 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.',net:'판독 서버에 연결할 수 없습니다. 이 미리보기 창에서는 동작하지 않고, 배포한 사이트에서 됩니다.'};
+const AIERR={noapi:'판독 서버를 찾을 수 없습니다. 이 미리보기 창이나, api/judge.js 파일 없이 배포된 사이트에서는 판독이 되지 않습니다.',nokey:'판독 서버에 Google API 키가 아직 등록되지 않았습니다. Vercel 설정의 환경 변수(GEMINI_API_KEY)에 키를 넣어야 무료 판독이 됩니다.',origin:'이 주소에서는 판독 서버를 쓸 수 없습니다. keepers-for-pixels 사이트에서 시도해 주세요.',upstream:'Google 쪽에서 판독을 거절했습니다.',temp:'판독 서버가 잠시 응답하지 않았습니다. 다시 눌러 주세요. 판독한 이미지는 그대로 남아 있습니다.',timeout:'판독이 너무 오래 걸려 멈췄습니다. Google 쪽이 붐비는 것 같습니다. 잠시 뒤 다시 눌러 주세요.',busy:'Google 판독 서버가 지금 붐빕니다(일시적인 문제). 1~2분 뒤 다시 눌러 주세요. 판독한 이미지는 그대로 남아 있습니다.',nomodel:'쓸 수 있는 Gemini 모델을 찾지 못했습니다. 모델 이름을 확인해야 합니다.',limit:'오늘 이 사이트의 무료 판독 한도를 다 썼습니다. 내 API 키를 넣으면 계속 판독할 수 있습니다.',quota:'Google 사용량이 잠시 찼습니다. 1분쯤 뒤에 다시 눌러 주세요.',key:'API 키가 올바르지 않거나 이 모델을 쓸 권한이 없습니다. 키를 다시 확인해 주세요.',server:'판독 중 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.',net:'판독 서버에 연결할 수 없습니다. 이 미리보기 창에서는 동작하지 않고, 배포한 사이트에서 됩니다.'};
 function aiTargets(){ return B.items.filter(i=>i.checks&&!i.ai); }
 const topicNow=()=>(($('#prompt').value||B.prompt||'').trim());
 const aiModeNow=()=>P().aiMode==='free'?'free':'own';
@@ -1156,23 +1162,25 @@ let aiCurSet=new Set(), aiTick=0;
 /* 예상 시간: 처음엔 한 장당 AIPER(2장 동시 판독 기준)로 어림하고, 판독이 끝날 때마다 실제 걸린 시간으로 다시 계산한다 */
 const AIPER=15000, dur=ms=>{ const s=Math.round(ms/1000); return s<60?`${s}초`:`${Math.floor(s/60)}분 ${s%60}초`; }, aiEta=ms=>ms<60000?'1분 미만':`약 ${Math.ceil(ms/60000)}분`;
 async function aiJudge(){ const L=aiTargets(); if(!L.length||aiBusy) return; const own=aiModeNow()==='own'; if(own&&!userKey){ $('#aiKey').focus(); return; }
-  aiBusy=true; aiStop=false; aiNote=''; const m=$('#aiMsg'); renderAiBar();
+  aiBusy=true; aiStop=false; aiNote=''; aiAbort=new AbortController(); const m=$('#aiMsg'); renderAiBar();
   let fail='', next=0, done0=0; const topic=topicNow().replace(/["\n\r]/g,' ').slice(0,1000).trim(), t0=Date.now();
   const show=()=>{ const el0=Date.now()-t0, per=done0?el0/done0:AIPER, left=Math.max(0,per*(L.length-done0)-(done0?0:el0)), cur=[...aiCurSet].map(i=>i.no+'번').join(', ');
-    m.textContent=`판독 중 ${done0} / ${L.length}장 완료${cur?` · ${cur} 보는 중`:''} · 남은 시간 ${aiEta(left)} · ${dur(el0)} 지남`; };
+    const slow=[...aiCurSet].some(i=>Date.now()-(i._aiT||Date.now())>60000);
+    m.replaceChildren(`판독 중 ${done0} / ${L.length}장 완료${cur?` · ${cur} 보는 중`:''} · 남은 시간 ${aiEta(left)} · ${dur(el0)} 지남`,...(slow?[el('b',{class:'aislow'},'1분 넘게 걸리고 있습니다. Google 쪽이 느린 것 같습니다. 그만하려면 "판독 정지"를 누르세요.')]:[])); };
   clearInterval(aiTick); aiTick=setInterval(show,1000);
   /* 두 장씩 동시에 보낸다 (무료 사용량 한도를 고려해 2장까지만) */
-  const worker=async()=>{ while(!aiStop&&!fail&&next<L.length){ const it=L[next++]; aiCurSet.add(it); aiCur=it; aiRefresh(); show();
+  const worker=async()=>{ while(!aiStop&&!fail&&next<L.length){ const it=L[next++]; it._aiT=Date.now(); aiCurSet.add(it); aiCur=it; aiRefresh(); show();
       let out; try{ const image=await smallJpeg(it); out=own?await judgeOwn(image,topic):await judgeServer(image,topic,false); }catch(e){ out={err:'server'}; }
       aiCurSet.delete(it); aiCur=[...aiCurSet][0]||null;
+      if(out.err==='stopped'||aiStop) break;
       if(out.err){ if(!fail){ fail=AIERR[out.err]+(out.detail?` (오류 코드 ${out.detail})`:''); if(out.err==='limit') fail='오늘 이 사이트의 무료 판독 한도를 다 썼습니다. "내 API 키"로 바꾸면 계속 판독할 수 있습니다.'; } break; }
       const a=out.result; it.ai=a; done0++; B.aiCount=(B.aiCount||0)+1; if(own) B.aiOwn=(B.aiOwn||0)+1;
       AIK.forEach(([k,,ts])=>{ it.checks[k]=a.issues.some(x=>ts.includes(x.type)); });
       if(it.state==='skip'&&!it.reason) it.reason=guessReason(it);
       aiRefresh(); show(); } };
-  await Promise.all([worker(),worker()]);
+  await Promise.all([worker(),worker()]); aiAbort=null;
   clearInterval(aiTick); aiCur=null; aiCurSet.clear(); aiBusy=false; const done=B.items.filter(x=>x.ai).length, sec=Math.round((Date.now()-t0)/1000);
-  aiNote=fail?(done?`${done}장까지 판독했습니다. `:'')+fail:(done0?`${done0}장 판독 완료 · ${dur(sec*1000)} 걸림`:''); aiRefresh(); }
+  aiNote=aiStop?(done0?`${done0}장 판독한 뒤 정지했습니다. 남은 이미지는 다시 누르면 이어서 판독합니다.`:'판독을 정지했습니다.'):fail?(done?`${done}장까지 판독했습니다. `:'')+fail:(done0?`${done0}장 판독 완료 · ${dur(sec*1000)} 걸림`:''); aiRefresh(); }
 $('#aiRun').onclick=()=>aiConsent(aiJudge);
 $('#aiSkip').onclick=()=>{ B.aiSkip=true; renderAiBar(); };
 $('#aiUnskip').onclick=()=>{ B.aiSkip=false; renderAiBar(); };
@@ -1182,7 +1190,7 @@ $('#aiKeySave').onclick=()=>{ const v=$('#aiKey').value.trim(), m=$('#aiKeyMsg')
 $('#aiKey').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#aiKeySave').click(); });
 $('#aiKeyChange').onclick=()=>{ aiKeyEdit=true; renderAiBar(); $('#aiKey').focus(); };
 $('#aiKeyClear').onclick=()=>{ userKey=''; aiKeyEdit=false; try{ localStorage.removeItem(KEYSTORE); }catch(e){} $('#aiKey').value=''; $('#aiKeyMsg').textContent='키를 지웠습니다.'; renderAiBar(); };
-$('#aiStopBtn').onclick=()=>{ aiStop=true; };
+$('#aiStopBtn').onclick=()=>{ aiStop=true; if(aiAbort) aiAbort.abort(); };
 
 // ── ② Pick
 const FILTERS=[['all','전체'],['none','미정'],['keep','Keep'],['skip','Skip'],['warn','Issues']];
