@@ -22,22 +22,24 @@ const TYPES = ['hand', 'face', 'body', 'text', 'object', 'background', 'logic', 
 // 오탐을 줄이려고 확신도(confidence)가 high인 문제만 남기고, 판정도 남은 문제 기준으로 맞춘다
 function clean(a, topic) {
   a = a || {};
-  const issues = (Array.isArray(a.issues) ? a.issues : [])
-    .filter(x => x && (x.confidence === undefined || x.confidence === 'high'))
-    .map(x => {
-      const box = Array.isArray(x.box_2d) && x.box_2d.length === 4 && x.box_2d.every(n => typeof n === 'number' && isFinite(n))
-        ? x.box_2d.map(n => Math.max(0, Math.min(1000, Math.round(n)))) : null;
-      return { type: pick(x.type, TYPES, ''), label: typeof x.label === 'string' ? x.label.slice(0, 30) : '', box_2d: box };
-    })
-    .filter(x => x.type && (x.type !== 'topic' || topic))
-    .slice(0, 8);
+  const all = (Array.isArray(a.issues) ? a.issues : []).filter(x => x && typeof x === 'object');
+  const item = x => {
+    const box = Array.isArray(x.box_2d) && x.box_2d.length === 4 && x.box_2d.every(n => typeof n === 'number' && isFinite(n))
+      ? x.box_2d.map(n => Math.max(0, Math.min(1000, Math.round(n)))) : null;
+    return { type: pick(x.type, TYPES, ''), label: typeof x.label === 'string' ? x.label.slice(0, 30) : '', box_2d: box };
+  };
+  const ok = x => x.type && (x.type !== 'topic' || topic);
+  const issues = all.filter(x => x.confidence === undefined || x.confidence === 'high').map(item).filter(ok).slice(0, 8);
+  // medium은 배지로 쓰지 않고, 리포트에 '확신 낮음'으로만 보여 준다
+  const maybe = all.filter(x => x.confidence === 'medium').map(item).filter(ok).slice(0, 6);
   let verdict = pick(a.verdict, ['keep', 'fix', 'redo'], 'fix');
   if (!issues.length) verdict = 'keep'; else if (verdict === 'keep') verdict = 'fix';
   const has = t => issues.some(x => x.type === t);
   return {
     verdict,
     issues,
-    scene: typeof a.scene === 'string' ? a.scene.slice(0, 160) : '',
+    maybe,
+    scene: typeof a.scene === 'string' ? a.scene.slice(0, 200) : '',
     note: typeof a.note === 'string' ? a.note.slice(0, 80) : '',
     hand: has('hand') || has('face') || has('body') ? 'bad' : 'ok',
     text: has('text') ? 'bad' : 'ok',

@@ -642,6 +642,10 @@
   /* ── 수정 17: 비활성(이미지 올리기 전)일 때 판독 패널은 보기만 하고 아무 동작도 하지 않음 ── */
   .aipanel.off{pointer-events:none;user-select:none}
   .aipanel.off .aikey,.aipanel.off #aiSkip,.aipanel.off .hwrap{display:none}
+
+  /* ── 수정 18: 리포트에 'AI가 본 장면'과 '확신 낮음' 항목 ── */
+  .armaybe,.arscene{margin:6px 0 0;font-size:12px;line-height:1.55;color:rgba(255,255,255,.6)}
+  .armaybe b,.arscene b{color:rgba(255,255,255,.78);font-weight:700}
 </style>
 </head>
 <body>
@@ -1088,11 +1092,13 @@ let userKey=''; try{ userKey=localStorage.getItem(KEYSTORE)||''; }catch(e){}
 const AIPROMPT=topic=>"너는 AI 생성 이미지의 결함을 찾는 신중한 검수 전문가야. 없는 문제를 지어내는 것은 문제를 놓치는 것보다 더 나쁜 실수야.\n먼저 scene에 장면을 한두 문장으로 적어: 누가 있는지, 각 인물이 어디를 보며 무엇을 하는지, 화면·책·거울이 어느 쪽을 향하는지.\n그다음 아래 8가지를 하나씩 확인해.\n1. hand: 손가락이 5개가 아님(6개, 4개), 손가락이 붙거나 녹아듦, 관절이 반대로 꺾임, 손이 너무 많음, 손목이 팔과 맞지 않게 돌아감, 손바닥·손등 방향이 팔의 방향과 뒤바뀜(손이 거꾸로 붙은 것처럼 보임). 사람마다 두 손을 각각 팔에서 손끝까지 따라가며 확인해. 손 모양이 분명히 보이는 손만 판단하고, 가려지거나 흐려서 알아볼 수 없는 손, 화풍 때문에 단순하게 그린 손은 넣지 마.\n2. face: 두 눈의 크기·방향이 다름, 이상한 치아·귀·눈동자, 녹아내리거나 뭉개진 얼굴, 군중 속에 똑같이 복제된 얼굴\n3. body: 팔다리 개수·길이 이상, 몸이 사물이나 다른 사람과 합쳐짐, 불가능한 자세, 동물의 다리·꼬리 개수 이상\n4. text: 철자가 깨진 글자, 읽을 수 없는 글자 모양, 엉터리 간판·로고, 시계 숫자판·키보드 자판·피아노 건반의 배열 이상\n5. object: 사물끼리 녹아 붙음, 끊기거나 엉뚱하게 이어지는 선(난간·전선·줄·끈·기타 줄), 짝이 안 맞는 안경·귀걸이·신발, 물리적으로 불가능한 구조\n6. background: 휘어진 직선, 어긋난 원근, 그림자·반사 방향이 맞지 않음, 머리카락·옷이 배경에 녹아드는 경계\n7. logic: 장면의 앞뒤가 안 맞음 - 인물이 보는 화면·책이 인물 반대쪽을 향함, 거울 속 모습이 실제와 다름, 시선과 행동이 맞지 않음, 물건을 불가능한 방식으로 쥠, 받침 없이 떠 있는 물건\n8. topic: TOPIC_RULE\nPROMPT_RULE\n규칙:\n- 각 문제마다 confidence를 적어. high=이미지에서 분명히 보이고 누가 봐도 틀림, medium=그럴 수도 있음, low=애매함.\n- 의도된 화풍(만화·일러스트의 과장, 단순화)은 결함이 아니야. 같은 문제는 한 번만 넣어.\n- 각 문제의 위치를 box_2d [ymin, xmin, ymax, xmax] (0~1000 기준)로 표시해. 문제가 없으면 issues는 빈 배열이야.\n아래 JSON 하나로만 답해:\n{\"scene\":\"장면 설명\",\"verdict\":\"keep|fix|redo\",\"issues\":[{\"type\":\"hand|face|body|text|object|background|logic|topic\",\"label\":\"한국어 15자 이내 설명\",\"confidence\":\"high|medium|low\",\"box_2d\":[0,0,0,0]}],\"note\":\"한국어 한 문장 요약\"}\nverdict는 confidence가 high인 문제만 보고 정해: keep=그대로 써도 됨, fix=자르기·편집으로 가릴 수 있는 작은 문제, redo=다시 만드는 편이 나음".replace('TOPIC_RULE',topic?'사용자가 적은 주제·프롬프트와 이미지 내용이 확실히 다름':'주제가 없으니 검사하지 않음').replace('PROMPT_RULE',topic?`사용자가 이 이미지를 만들 때 적은 주제·프롬프트: "${topic}"\n이 글은 만든 사람의 의도(어떤 장면인지, 일부러 과장한 표현인지, 빠진 요소가 있는지)를 파악하는 데만 써. 손·얼굴·몸 같은 형태 결함은 이 글에 끌려가지 말고 이미지만 보고 판단해.`:'');
 const oneOf=(v,l,d)=>l.includes(v)?v:d;
 const AITYPES=['hand','face','body','text','object','background','logic','topic'];
-/* 확신도 high인 문제만 남긴다 (오탐 줄이기). 판정도 남은 문제 기준으로 맞춘다 */
-function cleanAI(a,topic){ a=a||{}; const issues=(Array.isArray(a.issues)?a.issues:[]).filter(x=>x&&(x.confidence===undefined||x.confidence==='high')).map(x=>{ const bx=Array.isArray(x.box_2d)&&x.box_2d.length===4&&x.box_2d.every(n=>typeof n==='number'&&isFinite(n))?x.box_2d.map(n=>clamp(Math.round(n),0,1000)):null;
-    return {type:oneOf(x.type,AITYPES,''),label:typeof x.label==='string'?x.label.slice(0,30):'',box_2d:bx}; }).filter(x=>x.type&&(x.type!=='topic'||topic)).slice(0,8);
+/* 확신도 high인 문제만 배지로 쓴다 (오탐 줄이기). medium은 maybe로 따로 두고 리포트에만 '확신 낮음'으로 보여 준다 */
+const aiItem=x=>{ const bx=Array.isArray(x.box_2d)&&x.box_2d.length===4&&x.box_2d.every(n=>typeof n==='number'&&isFinite(n))?x.box_2d.map(n=>clamp(Math.round(n),0,1000)):null; return {type:oneOf(x.type,AITYPES,''),label:typeof x.label==='string'?x.label.slice(0,30):'',box_2d:bx}; };
+function cleanAI(a,topic){ a=a||{}; const all=(Array.isArray(a.issues)?a.issues:[]).filter(x=>x&&typeof x==='object'), ok=x=>x.type&&(x.type!=='topic'||topic);
+  const issues=all.filter(x=>x.confidence===undefined||x.confidence==='high').map(aiItem).filter(ok).slice(0,8);
+  const maybe=(Array.isArray(a.maybe)?a.maybe:all.filter(x=>x.confidence==='medium')).filter(x=>x&&typeof x==='object').map(aiItem).filter(ok).slice(0,6);
   let v=oneOf(a.verdict,['keep','fix','redo'],'fix'); if(!issues.length) v='keep'; else if(v==='keep') v='fix';
-  return {verdict:v,issues,scene:typeof a.scene==='string'?a.scene.slice(0,160):'',note:typeof a.note==='string'?a.note.slice(0,80):''}; }
+  return {verdict:v,issues,maybe,scene:typeof a.scene==='string'?a.scene.slice(0,200):'',note:typeof a.note==='string'?a.note.slice(0,80):''}; }
 /* 판독용 사본: 긴 변 1536px. 손가락처럼 작은 부분도 보이게 예전(768px)보다 크게 보낸다 */
 const AISIDE=1536, AITHINK='medium';
 async function smallJpeg(it){ const d=await decode(it.file), k=Math.min(1,AISIDE/Math.max(d.w,d.h)), c=canvasOf(d.w*k,d.h*k), g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(d.src,0,0,c.width,c.height); d.close(); return c.toDataURL('image/jpeg',0.85).split(',')[1]; }
@@ -1139,7 +1145,7 @@ function renderAiBar(){ const L=B.items.filter(i=>i.checks), n=aiTargets().lengt
   AIK.forEach(([k])=>{ const c=cnt(k), e=$('#aiCnt_'+k.slice(3)); e.textContent=!done.length?(aiBusy?'검사 중':'대기'):c?`${c}장 의심`:'이상 없음'; e.className='ckres'+(done.length?(c?' bad':' ok'):''); e.closest('.aick').classList.toggle('live',aiBusy); });
   const bad=done.filter(i=>aiBad(i)), sm=$('#aiSum'); sm.hidden=!done.length||aiBusy;
   if(!sm.hidden){ const show=el('button',{class:'btn sm',type:'button'},'Pick에서 의심 이미지만 보기'); show.onclick=()=>{ pickFilter='warn'; $('#toPick').click(); };
-    sm.replaceChildren(el('div',null,el('b',null,`${done.length}장 중 ${bad.length}장`),bad.length?'에서 AI 결함이 의심됩니다.':' 모두 큰 결함이 보이지 않습니다.',(()=>{ const r=done.filter(i=>i.ai.verdict==='redo').length; return r?` 그중 ${r}장은 다시 생성을 권합니다.`:''; })(),el('small',null,' 결과는 참고용 제안이며 틀릴 수 있습니다.')),bad.length?show:null); } }
+    sm.replaceChildren(el('div',null,el('b',null,`${done.length}장 중 ${bad.length}장`),bad.length?'에서 AI 결함이 의심됩니다.':' 모두 큰 결함이 보이지 않습니다.',(()=>{ const r=done.filter(i=>i.ai.verdict==='redo').length; return r?` 그중 ${r}장은 다시 생성을 권합니다.`:''; })(),el('small',null,' 결과는 참고용 제안이며 틀릴 수 있습니다.')),...(bad.length?[show]:[])); } }
 $$('#aiSeg button').forEach(b=>b.onclick=()=>{ if(aiBusy) return; P().aiMode=b.dataset.m; save(); aiNote=''; renderAiBar(); if(b.dataset.m==='own'&&!userKey) $('#aiKey').focus(); });
 function aiConsent(go){ const c=$('#aiConfirm'), key=aiModeNow(); if(P().aiOk===key){ go(); return; }
   const yes=el('button',{class:'btn pri sm',type:'button'},'동의하고 판독'), no=el('button',{class:'btn sm',type:'button'},'취소');
@@ -1241,7 +1247,9 @@ const VERD={keep:['그대로 사용 가능','ok'],fix:['편집하면 사용 가�
 const TYPEK={hand:'손가락·손',face:'얼굴·눈',body:'몸·팔다리',text:'글자',object:'사물',background:'배경·원근·그림자',logic:'장면 논리',topic:'주제'};
 function aiReport(it){ const a=it.ai, v=VERD[a.verdict]||VERD.keep;
   return el('div',{class:'airep'},el('div',{class:'arh'},el('span',{class:'verd '+v[1]},'AI 판정 · '+v[0]),a.note?el('span',{class:'arn'},a.note):null),
-    el('small',{class:'armeta'},[a.model?`판독 모델 ${a.model}`:'',a.ms?`${Math.round(a.ms/100)/10}초`:''].filter(Boolean).join(' · ')),a.issues.length?el('ol',{class:'aril'},a.issues.map(x=>el('li',null,el('b',null,TYPEK[x.type]||x.type),' ',x.label||'',x.box_2d?null:el('small',null,' (위치 표시 없음)')))):el('p',{class:'arok'},'AI가 찾은 결함이 없습니다.')); }
+    el('small',{class:'armeta'},[a.model?`판독 모델 ${a.model}`:'',a.ms?`${Math.round(a.ms/100)/10}초`:''].filter(Boolean).join(' · ')),a.issues.length?el('ol',{class:'aril'},a.issues.map(x=>el('li',null,el('b',null,TYPEK[x.type]||x.type),' ',x.label||'',x.box_2d?null:el('small',null,' (위치 표시 없음)')))):el('p',{class:'arok'},'AI가 찾은 결함이 없습니다.'),
+    a.maybe&&a.maybe.length?el('p',{class:'armaybe'},el('b',null,'확신이 낮아 배지로 표시하지 않은 것: '),a.maybe.map(x=>`${x.label||''}(${TYPEK[x.type]||x.type})`).join(', ')):null,
+    a.scene?el('p',{class:'arscene'},el('b',null,'AI가 본 장면: '),a.scene):null); }
 
 // 크게 보기·2장 비교
 let aiOverlay=true;
